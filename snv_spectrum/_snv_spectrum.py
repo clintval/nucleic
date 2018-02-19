@@ -54,10 +54,10 @@ COSMIC_SIGNATURE_URL = (
 
 class Snv:
     def __init__(self, reference: str, alternate: str, context=None):
-        if len(reference) != 1:
-            raise ValueError('Reference must be a single base')
-        if len(alternate) != 1:
-            raise ValueError('Alternate must be a single base')
+        if reference not in nucleotides:
+            raise ValueError(f'Reference must be DNA nucleotide: {reference}')
+        if alternate not in nucleotides:
+            raise ValueError(f'Reference must be DNA nucleotide: {alternate}')
 
         self.reference = reference
         self.alternate = alternate
@@ -168,6 +168,9 @@ class Spectrum:
 
     @property
     def density(self):
+        if sum(self.substitutions.values()) == 0:
+            raise ValueError('Spectrum has no values and therefore no density')
+
         proportions = dict()
         for snv, count in self.substitutions.items():
             proportions[snv] = count / self.context_weights[snv.context]
