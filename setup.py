@@ -13,7 +13,7 @@ setuptools.setup(
     author_email='valentine.clint@gmail.com',
     description='A Python 3.6 library for plotting mutational spectra.',
     url=f'https://github.com/clintval/{PACKAGE}',
-    download_url=f'https://github.com/{PACKAGE}/archive/v{VERSION}.tar.gz',
+    download_url=f'https://github.com/clintval/{PACKAGE}/archive/v{VERSION}.tar.gz',
     long_description=Path('README.md').read_text(),
     long_description_content_type='text/markdown',
     license='MIT',
