@@ -4,7 +4,7 @@ from pathlib import Path
 from setuptools import find_packages
 
 PACKAGE = 'nucleic'
-VERSION = '0.5.0'
+VERSION = '0.6.0'
 
 setuptools.setup(
     name='nucleic',
