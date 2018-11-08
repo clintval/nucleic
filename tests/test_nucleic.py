@@ -1,6 +1,7 @@
 import pytest
 
-from Bio.Seq import complement, reverse_complement
+# TODO: Unit test these or rely on 3rd-party.
+from nucleic.util import complement, reverse_complement
 
 from nucleic import Nt, Snv, Spectrum
 from nucleic import IUPAC_MAPPING
