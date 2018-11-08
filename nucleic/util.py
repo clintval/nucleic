@@ -106,7 +106,7 @@ def fetch_cosmic_signatures() -> Mapping:
         cosmic_signatures: The probability masses of the COSMIC signatures.
 
     """
-    from nucleic._models import Nt, Spectrum, Notation
+    from nucleic import Nt, Spectrum, Notation
 
     all_signatures: defaultdict = defaultdict(lambda: Spectrum(k=3, notation=Notation.pyrimidine))
 
