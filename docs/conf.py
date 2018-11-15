@@ -5,6 +5,10 @@
 #
 # http://www.sphinx-doc.org/en/master/config
 
+import matplotlib
+
+matplotlib.use('agg')
+
 # -- Path setup --------------------------------------------------------------
 
 import os
