@@ -5,7 +5,9 @@
 #
 # http://www.sphinx-doc.org/en/master/config
 
-autodoc_mock_imports = ['_tkinter']
+# https://stackoverflow.com/a/45613395
+import matplotlib
+matplotlib.use('agg')
 
 # -- Path setup --------------------------------------------------------------
 
