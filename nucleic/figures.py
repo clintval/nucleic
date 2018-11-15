@@ -12,6 +12,7 @@ __all__ = ['plot_spectrum']
 
 signature_colors = ['#52C3F1', '#231F20', '#E62223', '#CBC9C8', '#97D54C', '#EDBFC2']
 
+
 def plot_spectrum(
     spectrum: SnvSpectrum,
     kind: str = 'density',

@@ -1,11 +1,6 @@
 from typing import Mapping
 
-__all__ = [
-    'DNA_IUPAC_NONDEGENERATE',
-    'STRATTON_SNV_COLOR',
-    'DEFAULT_SNV_COLOR',
-    'LONGFORM_LABEL',
-]
+__all__ = ['DNA_IUPAC_NONDEGENERATE', 'STRATTON_SNV_COLOR', 'DEFAULT_SNV_COLOR', 'LONGFORM_LABEL']
 
 #: The non-degenerate IUPAC DNA bases.
 DNA_IUPAC_NONDEGENERATE: str = 'ACGT'
