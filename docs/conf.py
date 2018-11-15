@@ -5,6 +5,8 @@
 #
 # http://www.sphinx-doc.org/en/master/config
 
+autodoc_mock_imports = ['_tkinter']
+
 # -- Path setup --------------------------------------------------------------
 
 import os
