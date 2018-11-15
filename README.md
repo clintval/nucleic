@@ -31,4 +31,4 @@ signatures = fetch_cosmic_signatures()
 canvas, (ax1, ax2) = plot_stratton_spectrum(signatures['Signature 24'])
 ```
 
-![signature-24](docs/img/signature-24.svg "Signature 24")
+![signature-24](https://raw.githubusercontent.com/clintval/nucleic/master/docs/img/signature-24.svg?sanitize=true "Signature 24")
