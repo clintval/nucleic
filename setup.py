@@ -43,6 +43,7 @@ setuptools.setup(
         'scipy>=1.0.0',
         'toyplot',
     ],
+    extras_requires={'gff': ['bcbio-gff', 'biopython']},
     keywords='signature mutation transition transversion spectra bioinformatics',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',

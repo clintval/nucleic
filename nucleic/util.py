@@ -130,11 +130,11 @@ def dataset(identifier: str, database: str = 'published') -> Dict:
         >>> from pprint import pprint
         >>> from nucleic.util import dataset
         >>> pprint(dataset('28351974'))  # doctest:+ELLIPSIS
-        [{'name': 'AFB1-gpt-10wk-exposure',
-          'vector': [0.0034329041,
-                     0.0137316166,
-                     0.0344053282,
-                     0.0188924926,
+        {'AFB1-gpt-10wk-exposure': {'treatment': 'Aflatoxin B1',
+                                    'vector': [0.0034329041,
+                                            0.0137316166,
+                                            0.0344053282,
+                                            0.0188924926,
         ...
 
     """
