@@ -3,6 +3,7 @@ from typing import Any, List, Type
 
 __all__ = ['MutRecord']
 
+
 class MutRecordKeys(object):
     contig = 'contig'
     start = 'start'

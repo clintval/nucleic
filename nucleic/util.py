@@ -118,17 +118,27 @@ class DictPrettyReprMixin(object):
 
 
 class ProgressLogger(object):
-    def __init__(self, logger: logging.Logger, noun: str = "records", verb: str = "processed", period: int = 1_000):
+    """Create a progress logger which will emit after a period of recording."""
+
+    def __init__(
+        self,
+        logger: logging.Logger,
+        noun: str = "records",
+        verb: str = "processed",
+        period: int = 1000,
+    ) -> None:
         self._at = 0
         self.logger = logger
         self.noun = noun
         self.verb = verb
         self.period = period
 
-    def record(self, item):
+    def record(self, item: Any) -> None:
+        """Record an event."""
         self._at += 1
         if self._at % self.period == 0:
-            self.logger.info(f'{self.verb.title()} {self._at:,} {self.noun}.')
+            message = f'{self.verb.title()} {self._at:,} {self.noun}.'
+            self.logger.info(message)
 
 
 def dataset(identifier: str, database: str = 'published') -> Dict:

@@ -53,7 +53,7 @@ class Dna(GrammaredSequence, NucleotideMixin):
         >>> dna.complement()
         Dna("T")
         >>> Dna("T").to("A")
-        Variant(ref=Dna("T"), alt=Dna("A"), context=Dna("T"))
+        Snv(ref=Dna("T"), alt=Dna("A"), context=Dna("T"))
 
     """
 
@@ -110,10 +110,7 @@ class Variant(object):
     """A variant of DNA with both a reference and alternate allele."""
 
     def __init__(
-        self,
-        ref: Union[str, Dna],
-        alt: Union[str, Dna],
-        data: Optional[Dict] = None,
+        self, ref: Union[str, Dna], alt: Union[str, Dna], data: Optional[Dict] = None
     ) -> None:
         self.ref = ref
         self.alt = alt
@@ -149,10 +146,7 @@ class Variant(object):
 
     def reverse_complement(self) -> 'Variant':
         """Return the reverse complement of this variant."""
-        return self.copy(
-            ref=self.ref.reverse_complement(),
-            alt=self.alt.reverse_complement(),
-        )
+        return self.copy(ref=self.ref.reverse_complement(), alt=self.alt.reverse_complement())
 
     def is_null(self) -> bool:
         """Return if this variant has an alternate equivalent to its reference."""
@@ -194,29 +188,24 @@ class Variant(object):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Variant):
             return NotImplemented
-        return (
-            self.ref == other.ref
-            and self.alt == other.alt
-            and str(self.context) == str(self.context)
-        )
+        return self.ref == other.ref and self.alt == other.alt
 
     def __hash__(self) -> int:
         return hash(f'{self.ref}{self.alt}')
 
     def __len__(self) -> int:
-        return max(len(ref), len(alt))
+        return max(len(self.ref), len(self.alt))
 
     def __repr__(self) -> str:
-        return (
-            f'{self.__class__.__qualname__}('
-            f'ref={repr(self.ref)}, '
-            f'alt={repr(self.alt)})'
-        )
+        return f'{self.__class__.__qualname__}(' f'ref={repr(self.ref)}, ' f'alt={repr(self.alt)})'
 
     def __str__(self) -> str:
         return f'[{self.label()}]'
 
+
 class Snv(Variant):
+    """A single nucleotide variant."""
+
     def __init__(
         self,
         ref: Union[str, Dna],
@@ -224,7 +213,7 @@ class Snv(Variant):
         context: Optional[Union[str, Dna]] = None,
         data: Optional[Dict] = None,
     ) -> None:
-        super().__init__(ref = ref, alt = alt, data = data)
+        super().__init__(ref=ref, alt=alt, data=data)
         self.context = context
 
     def color(self, scheme: str = 'default') -> Optional[str]:
@@ -303,9 +292,8 @@ class Snv(Variant):
 
     def is_transition(self) -> bool:
         """Return if this Snv is a transition."""
-        return (
-            (self.ref.is_pyrimidine() and self.alt.is_pyrimidine())
-            or (self.ref.is_purine() and self.alt.is_purine())
+        return (self.ref.is_pyrimidine() and self.alt.is_pyrimidine()) or (
+            self.ref.is_purine() and self.alt.is_purine()
         )
 
     def is_transversion(self) -> bool:
@@ -320,10 +308,10 @@ class Snv(Variant):
         """Return the 3′ adjacent sequence to the SNV."""
         return Dna(self.context[int((len(self.context) - 1) / 2) + 1 :])
 
-    def copy(self, **kwargs: Any) -> 'Variant':
+    def copy(self, **kwargs: Any) -> 'Snv':
         """Make a copy of this SNV."""
         kwargs = {} if kwargs is None else kwargs
-        return Variant(
+        return Snv(
             ref=kwargs.pop('ref', self.ref),
             alt=kwargs.pop('alt', self.alt),
             context=kwargs.pop('context', self.context),
@@ -406,6 +394,7 @@ class Snv(Variant):
     def __str__(self) -> str:
         return f'{self.lseq()}[{self.label()}]{self.rseq()}'
 
+
 class ContextWeights(DictPrettyReprMixin, DictMostCommonMixin, DictNpArrayMixin, OrderedDict):
     """A dictionary of sequences and their respective weights."""
 
@@ -462,9 +451,8 @@ class SnvSpectrum(Spectrum):
                 if context[int((k - 1) / 2)] != str(ref):
                     continue
 
-                variant = ref.to(alt)
                 self.weights[context] = 1
-                self[variant.within(context)] = 0
+                self[Snv(ref, alt, context=context)] = 0
         self._initialized = True
 
     @classmethod
@@ -489,7 +477,7 @@ class SnvSpectrum(Spectrum):
 
         """
         # Normalized proportion for a variant within this spectrum.
-        def norm_count(key: Variant) -> float:
+        def norm_count(key: Snv) -> float:
             if self[key] != 0 and self.weights[str(key.context)] == 0:
                 raise ValueError('Observations with no weight found: {self[key]}')
             return float(self[key] / self.weights[str(key.context)])
