@@ -2,7 +2,7 @@ from collections import OrderedDict
 from enum import Enum
 from itertools import permutations
 from pathlib import Path
-from typing import Any, Dict, Iterable, Mapping, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union
 
 import numpy as np
 
@@ -15,7 +15,7 @@ from skbio.util import classproperty
 from nucleic.util import DictMostCommonMixin, DictNpArrayMixin, DictPrettyReprMixin, kmers
 
 
-__all__ = ['Dna', 'Notation', 'Variant', 'SnvSpectrum']
+__all__ = ['Dna', 'Notation', 'Variant', 'Snv', 'SnvSpectrum']
 
 #: The non-degenerate IUPAC DNA bases.
 DNA_IUPAC_NONDEGENERATE: str = 'ACGT'
@@ -24,8 +24,13 @@ DNA_IUPAC_NONDEGENERATE: str = 'ACGT'
 class Notation(Enum):
     """The spectrum notation types."""
 
+    #: No normalization.
     none: int = 0
+
+    #: Normalization to pyrimidine.
     pyrimidine: int = 1
+
+    #: Normalization to purines.
     purine: int = 2
 
 
@@ -89,7 +94,10 @@ class Dna(GrammaredSequence, NucleotideMixin):
         """Create a variant allele."""
         if isinstance(other, str):
             other = Dna(other)
-        return Variant(self, other)
+        if len(self) == 1 and len(other) == 1:
+            return Snv(self, other)
+        else:
+            return Variant(self, other)
 
     def __hash__(self) -> int:
         return hash(repr(self))
@@ -105,49 +113,11 @@ class Variant(object):
         self,
         ref: Union[str, Dna],
         alt: Union[str, Dna],
-        context: Optional[Union[str, Dna]] = None,
         data: Optional[Dict] = None,
     ) -> None:
         self.ref = ref
         self.alt = alt
-        self.context = context
         self.data = data
-
-    def color(self, scheme: str = 'default') -> Optional[str]:
-        """Return the color representing this class of variant."""
-        from nucleic.plotting.cmap import SnvCmap
-
-        if self.is_snv():
-            mapping: Dict[str, str] = getattr(SnvCmap, scheme)
-            return mapping[self.label()]
-        return None
-
-    @property
-    def context(self) -> Dna:
-        """Return the context of this variant."""
-        return self._context
-
-    @context.setter
-    def context(self, context: Optional[Union[Dna, str]]) -> None:
-        """Verify that the context is valid.
-
-        Args:
-            context: The context of this variant, default to `ref`.
-
-        """
-        if context is None:
-            self._context = self.ref
-            return None
-        elif isinstance(context, str):
-            context = Dna(context)
-        if len(context) % 2 != 1:
-            raise ValueError(f'Context must be of odd length: {context}')
-
-        middle = context[int(len(context) / 2)]
-        if str(middle) != str(self.ref):
-            raise ValueError(f'Middle of context must equal ref: {middle} != {self.ref}')
-
-        self._context = context
 
     @property
     def ref(self) -> Dna:
@@ -175,16 +145,13 @@ class Variant(object):
 
     def complement(self) -> 'Variant':
         """Return the complement variant."""
-        return self.copy(
-            ref=self.ref.complement(), alt=self.alt.complement(), context=self.context.complement()
-        )
+        return self.copy(ef=self.ref.complement(), alt=self.alt.complement())
 
     def reverse_complement(self) -> 'Variant':
         """Return the reverse complement of this variant."""
         return self.copy(
             ref=self.ref.reverse_complement(),
             alt=self.alt.reverse_complement(),
-            context=self.context.reverse_complement(),
         )
 
     def is_null(self) -> bool:
@@ -194,18 +161,6 @@ class Variant(object):
     def is_snv(self) -> bool:
         """Return if this variant is a single nucleotide variant."""
         return not self.is_null() and len(self.ref) == len(self.alt) == 1
-
-    def is_transition(self) -> bool:
-        """Return if this variant is a transition."""
-        return (
-            self.is_snv()
-            and (self.ref.is_pyrimidine() and self.alt.is_pyrimidine())
-            or (self.ref.is_purine() and self.alt.is_purine())
-        )
-
-    def is_transversion(self) -> bool:
-        """Return if this variant is a transversion."""
-        return self.is_snv() and not self.is_transition()
 
     def is_mnv(self) -> bool:
         """Return if this variant is a multiple nucleotide variant."""
@@ -223,14 +178,6 @@ class Variant(object):
         """Return if this variant is an insertion or deletion."""
         return self.is_insertion() or self.is_deletion()
 
-    def lseq(self) -> Dna:
-        """Return the 5′ adjacent sequence to the variant."""
-        return Dna(self.context[0 : int((len(self.context) - 1) / 2)])
-
-    def rseq(self) -> Dna:
-        """Return the 3′ adjacent sequence to the variant."""
-        return Dna(self.context[int((len(self.context) - 1) / 2) + 1 :])
-
     def label(self) -> str:
         """Return a pretty representation of the variant."""
         return '→'.join(map(str, [self.ref, self.alt]))
@@ -241,23 +188,175 @@ class Variant(object):
         return Variant(
             ref=kwargs.pop('ref', self.ref),
             alt=kwargs.pop('alt', self.alt),
+            data=kwargs.pop('data', self.data),
+        )
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Variant):
+            return NotImplemented
+        return (
+            self.ref == other.ref
+            and self.alt == other.alt
+            and str(self.context) == str(self.context)
+        )
+
+    def __hash__(self) -> int:
+        return hash(f'{self.ref}{self.alt}')
+
+    def __len__(self) -> int:
+        return max(len(ref), len(alt))
+
+    def __repr__(self) -> str:
+        return (
+            f'{self.__class__.__qualname__}('
+            f'ref={repr(self.ref)}, '
+            f'alt={repr(self.alt)})'
+        )
+
+    def __str__(self) -> str:
+        return f'[{self.label()}]'
+
+class Snv(Variant):
+    def __init__(
+        self,
+        ref: Union[str, Dna],
+        alt: Union[str, Dna],
+        context: Optional[Union[str, Dna]] = None,
+        data: Optional[Dict] = None,
+    ) -> None:
+        super().__init__(ref = ref, alt = alt, data = data)
+        self.context = context
+
+    def color(self, scheme: str = 'default') -> Optional[str]:
+        """Return the color representing this class of SNV.
+
+        At this time, the only color maps available are:
+
+            - "default"
+            - "stratton"
+
+        Args:
+            scheme: The colorscheme to map to.
+
+        """
+        from nucleic.plotting.cmap import SnvCmap
+
+        if self.is_snv():
+            mapping: Dict[str, str] = getattr(SnvCmap, scheme)
+            return mapping[self.label()]
+        return None
+
+    @property
+    def context(self) -> Dna:
+        """Return the context of this SNV."""
+        return self._context
+
+    @context.setter
+    def context(self, context: Optional[Union[Dna, str]]) -> None:
+        """Verify that the context is valid.
+
+        Args:
+            context: The context of this SNV, default to `ref`.
+
+        """
+        if context is None:
+            self._context = self.ref
+            return None
+        elif isinstance(context, str):
+            context = Dna(context)
+        if len(context) % 2 != 1:
+            raise ValueError(f'Context must be of odd length: {context}')
+
+        middle = context[int(len(context) / 2)]
+        if str(middle) != str(self.ref):
+            raise ValueError(f'Middle of context must equal ref: {middle} != {self.ref}')
+
+        self._context = context
+
+    @property
+    def ref(self) -> Dna:
+        """Return the reference of this Snv."""
+        return self._ref
+
+    @ref.setter
+    def ref(self, ref: Dna) -> None:
+        """Verify that the reference is of type :class:`nucleic.Dna`."""
+        if isinstance(ref, str):
+            ref = Dna(ref)
+        if len(ref) != 1:
+            raise ValueError(f"Alt length for `SNV` must be 1: {ref}")
+        self._ref = ref
+
+    @property
+    def alt(self) -> Dna:
+        """Return the alternate of this Snv."""
+        return self._alt
+
+    @alt.setter
+    def alt(self, alt: Dna) -> None:
+        """Verify that the alternate is of type :class:`nucleic.Dna`."""
+        if isinstance(alt, str):
+            alt = Dna(alt)
+        if len(alt) != 1:
+            raise ValueError(f"Alt length for `SNV` must be 1: {alt}")
+        self._alt = alt
+
+    def is_transition(self) -> bool:
+        """Return if this Snv is a transition."""
+        return (
+            (self.ref.is_pyrimidine() and self.alt.is_pyrimidine())
+            or (self.ref.is_purine() and self.alt.is_purine())
+        )
+
+    def is_transversion(self) -> bool:
+        """Return if this Snv is a transversion."""
+        return not self.is_transition()
+
+    def lseq(self) -> Dna:
+        """Return the 5′ adjacent sequence to the SNV."""
+        return Dna(self.context[0 : int((len(self.context) - 1) / 2)])
+
+    def rseq(self) -> Dna:
+        """Return the 3′ adjacent sequence to the SNV."""
+        return Dna(self.context[int((len(self.context) - 1) / 2) + 1 :])
+
+    def copy(self, **kwargs: Any) -> 'Variant':
+        """Make a copy of this SNV."""
+        kwargs = {} if kwargs is None else kwargs
+        return Variant(
+            ref=kwargs.pop('ref', self.ref),
+            alt=kwargs.pop('alt', self.alt),
             context=kwargs.pop('context', self.context),
             data=kwargs.pop('data', self.data),
         )
 
+    def complement(self) -> 'Variant':
+        """Return the complement SNV."""
+        return self.copy(
+            ref=self.ref.complement(), alt=self.alt.complement(), context=self.context.complement()
+        )
+
+    def reverse_complement(self) -> 'Variant':
+        """Return the reverse complement of this SNV."""
+        return self.copy(
+            ref=self.ref.reverse_complement(),
+            alt=self.alt.reverse_complement(),
+            context=self.context.reverse_complement(),
+        )
+
     def within(self, context: Union[str, Dna]) -> 'Variant':
-        """Set the context of this variant."""
+        """Set the context of this SNV."""
         if isinstance(context, str):
             context = Dna(context)
         self.context = context
         return self
 
     def with_purine_ref(self) -> 'Variant':
-        """Return this variant with its reference as a purine."""
+        """Return this SNV with its reference as a purine."""
         return self.reverse_complement() if self.ref.is_pyrimidine() else self
 
     def with_pyrimidine_ref(self) -> 'Variant':
-        """Return this variant with its reference as a pyrimidine."""
+        """Return this SNV with its reference as a pyrimidine."""
         return self.reverse_complement() if self.ref.is_purine() else self
 
     def set_context_from_fasta(self, infile: Path, contig: str, position: int, k: int = 3) -> None:
@@ -289,19 +388,12 @@ class Variant(object):
         self.context = Dna(reference[contig][int(start) : int(end)])
 
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, Variant):
+        if not isinstance(other, Snv):
             return NotImplemented
-        return (
-            self.ref == other.ref
-            and self.alt == other.alt
-            and str(self.context) == str(self.context)
-        )
+        return self.ref == other.ref and self.alt == other.alt
 
     def __hash__(self) -> int:
         return hash(f'{self.ref}{self.alt}{self.context}')
-
-    def __len__(self) -> int:
-        return len(self.context)
 
     def __repr__(self) -> str:
         return (
@@ -313,7 +405,6 @@ class Variant(object):
 
     def __str__(self) -> str:
         return f'{self.lseq()}[{self.label()}]{self.rseq()}'
-
 
 class ContextWeights(DictPrettyReprMixin, DictMostCommonMixin, DictNpArrayMixin, OrderedDict):
     """A dictionary of sequences and their respective weights."""
@@ -377,12 +468,11 @@ class SnvSpectrum(Spectrum):
         self._initialized = True
 
     @classmethod
-    def from_iterable(
-        cls, iterable: Iterable[int], k: int = 1, notation: Notation = Notation.none
+    def from_list(
+        cls, iterable: List[float], k: int = 3, notation: Notation = Notation.none
     ) -> 'SnvSpectrum':
         """Build a spectrum from an interable of numbers."""
         spectrum = cls(k=k, notation=notation)
-        iterable = list(iterable)
 
         if len(spectrum) != len(iterable):
             raise ValueError('`iterable` not of `len(SnvSpectrum())`')
@@ -437,15 +527,15 @@ class SnvSpectrum(Spectrum):
 
         return spectrum_pu, spectrum_py
 
-    def __setitem__(self, key: Variant, value: float) -> None:
-        if not isinstance(key, Variant):
-            raise TypeError(f'Key must be of type `Variant`: {key}')
+    def __setitem__(self, key: Snv, value: float) -> None:
+        if not isinstance(key, Snv):
+            raise TypeError(f'Key must be of type `Snv`: {key}')
         elif not key.is_snv():
-            raise ValueError(f'`Variant` must be a single nucleotide variant: {key}')
-        elif not isinstance(value, (int, float)):
+            raise ValueError(f'`Snv` must be a single nucleotide variant: {key}')
+        elif not isinstance(value, (int, float, np.integer, np.float)):
             raise TypeError(f'Value must be a number: {value}')
         elif self._initialized and key not in self:
-            raise KeyError(f'Variant not found in `SnvSpectrum.counts`: {key}')
+            raise KeyError(f'Snv not found in `SnvSpectrum.counts`: {key}')
         super().__setitem__(key, value)
 
     def __repr__(self) -> str:

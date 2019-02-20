@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from heapq import nlargest
 from itertools import product
@@ -114,6 +115,20 @@ class DictPrettyReprMixin(object):
             r'{\s*', '{', pformat(dict(super().items()), indent=indent)  # type: ignore
         )
         return f'{self.__class__.__qualname__}({content})'
+
+
+class ProgressLogger(object):
+    def __init__(self, logger: logging.Logger, noun: str = "records", verb: str = "processed", period: int = 1_000):
+        self._at = 0
+        self.logger = logger
+        self.noun = noun
+        self.verb = verb
+        self.period = period
+
+    def record(self, item):
+        self._at += 1
+        if self._at % self.period == 0:
+            self.logger.info(f'{self.verb.title()} {self._at:,} {self.noun}.')
 
 
 def dataset(identifier: str, database: str = 'published') -> Dict:
