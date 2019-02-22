@@ -1,12 +1,9 @@
 from collections import OrderedDict
 from enum import Enum
 from itertools import permutations
-from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union
 
 import numpy as np
-
-from pyfaidx import Fasta
 
 from skbio.sequence import GrammaredSequence
 from skbio.sequence._nucleotide_mixin import NucleotideMixin
@@ -115,6 +112,15 @@ class Variant(object):
         self.ref = ref
         self.alt = alt
         self.data = data
+
+    def __new__(cls, *args, **kwargs) -> 'Variant':
+        """Return a new :class:`Variant`."""
+        ref_length: int = len(kwargs.get('ref') or args[0])
+        alt_length: int = len(kwargs.get('alt') or args[1])
+
+        if cls is not Snv and 1 == ref_length == alt_length:
+            return Snv(*args, **kwargs)
+        return object.__new__(cls)
 
     @property
     def ref(self) -> Dna:
@@ -346,34 +352,6 @@ class Snv(Variant):
     def with_pyrimidine_ref(self) -> 'Variant':
         """Return this SNV with its reference as a pyrimidine."""
         return self.reverse_complement() if self.ref.is_purine() else self
-
-    def set_context_from_fasta(self, infile: Path, contig: str, position: int, k: int = 3) -> None:
-        """Set the context by looking up a genomic loci from a FASTA.
-
-        Args:
-            infile: FASTA filepath.
-            contig: The contig name with containing the locus.
-            position: The 0-based contig position that the Variant is centered on.
-            k: The length of the context, must be positive and odd.
-
-        Notes:
-            - The FASTA file will be indexed if it is not.
-            - The length of the context must be odd so the context can be
-              symmetrical in length about the the target position.
-
-        """
-        reference = Fasta(str(infile), sequence_always_upper=True)
-
-        if not isinstance(position, int) and position >= 0:
-            raise TypeError('position must be a postitive integer')
-        if not isinstance(contig, str):
-            raise TypeError('contig must be of type str')
-        if not isinstance(k, int) and k % 2 != 1 and k > 0:
-            raise TypeError('k must be a positive odd integer')
-
-        flank_length = (k - 1) / 2
-        start, end = position - flank_length - 1, position + flank_length
-        self.context = Dna(reference[contig][int(start) : int(end)])
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Snv):
