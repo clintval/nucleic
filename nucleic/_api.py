@@ -1,9 +1,12 @@
 from collections import OrderedDict
 from enum import Enum
 from itertools import permutations
+from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union
 
 import numpy as np
+
+from pyfaidx import Fasta
 
 from skbio.sequence import GrammaredSequence
 from skbio.sequence._nucleotide_mixin import NucleotideMixin
@@ -12,7 +15,7 @@ from skbio.util import classproperty
 from nucleic.util import DictMostCommonMixin, DictNpArrayMixin, DictPrettyReprMixin, kmers
 
 
-__all__ = ['Dna', 'Notation', 'Variant', 'Snv', 'SnvSpectrum']
+__all__ = ['Dna', 'Notation', 'Variant', 'Snv', 'SnvSpectrum', 'fasta_centered_subseq']
 
 #: The non-degenerate IUPAC DNA bases.
 DNA_IUPAC_NONDEGENERATE: str = 'ACGT'
@@ -113,14 +116,15 @@ class Variant(object):
         self.alt = alt
         self.data = data
 
-    def __new__(cls, *args, **kwargs) -> 'Variant':
+    def __new__(cls, *args: Any, **kwargs: Any) -> 'Variant':
         """Return a new :class:`Variant`."""
         ref_length: int = len(kwargs.get('ref') or args[0])
         alt_length: int = len(kwargs.get('alt') or args[1])
 
         if cls is not Snv and 1 == ref_length == alt_length:
             return Snv(*args, **kwargs)
-        return object.__new__(cls)
+        variant: Variant = object.__new__(cls)  # type: ignore
+        return variant
 
     @property
     def ref(self) -> Dna:
@@ -506,3 +510,31 @@ class SnvSpectrum(Spectrum):
 
     def __repr__(self) -> str:
         return f'{self.__class__.__qualname__}(k={self.k}, notation={self.notation})'
+
+
+def fasta_centered_subseq(infile: Path, contig: str, position: int, k: int = 3) -> Dna:
+    """Fetch a subsequence from a FASTA centered on a locus.
+
+    Args:
+        infile: FASTA filepath.
+        contig: The reference sequence name containing the locus.
+        position: The 0-based contig position that the Variant is centered on.
+        k: The length of the context, must be positive and odd.
+
+    Notes:
+        - The FASTA file will be indexed if it is not.
+        - The length of the returned subsequence will be odd.
+
+    """
+    reference = Fasta(str(infile))
+
+    if not isinstance(position, int) and position >= 0:
+        raise TypeError('position must be a postitive integer')
+    if not isinstance(contig, str):
+        raise TypeError('contig must be of type str')
+    if not isinstance(k, int) and k % 2 != 1 and k > 0:
+        raise TypeError('k must be a positive odd integer')
+
+    flank_length = (k - 1) / 2
+    start, end = position - flank_length - 1, position + flank_length
+    return Dna(reference[contig][int(start) : int(end)])

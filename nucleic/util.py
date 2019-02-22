@@ -10,8 +10,6 @@ from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 
-from pyfaidx import Fasta
-
 __all__ = [
     'DictMostCommonMixin',
     'DictNpArrayMixin',
@@ -193,33 +191,3 @@ def kmers(k: int, alphabet: Union[Iterable[str], str]) -> Generator[str, None, N
 
     """
     yield from map(lambda _: ''.join(_), product(alphabet, repeat=k))
-
-
-def fasta_centered_subseq(self, infile: Path, contig: str, position: int, k: int = 3) -> 'Dna':
-    """Fetch a subsequence from a FASTA centered on a locus.
-
-    Args:
-        infile: FASTA filepath.
-        contig: The reference sequence name containing the locus.
-        position: The 0-based contig position that the Variant is centered on.
-        k: The length of the context, must be positive and odd.
-
-    Notes:
-        - The FASTA file will be indexed if it is not.
-        - The length of the returned subsequence will be odd.
-
-    """
-    from nucleic import Dna
-
-    reference = Fasta(str(infile))
-
-    if not isinstance(position, int) and position >= 0:
-        raise TypeError('position must be a postitive integer')
-    if not isinstance(contig, str):
-        raise TypeError('contig must be of type str')
-    if not isinstance(k, int) and k % 2 != 1 and k > 0:
-        raise TypeError('k must be a positive odd integer')
-
-    flank_length = (k - 1) / 2
-    start, end = position - flank_length - 1, position + flank_length
-    return Dna(reference[contig][int(start) : int(end)])

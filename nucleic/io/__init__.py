@@ -3,9 +3,9 @@ from collections import OrderedDict, defaultdict
 from itertools import groupby
 from operator import attrgetter
 from pathlib import Path
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Type, Union
 
-from nucleic import Dna, Variant
+from nucleic import Dna, Snv, Variant
 
 __all__ = ['MutRecord', 'MutReader']
 
@@ -111,15 +111,15 @@ class MutRecord(OrderedDict):
         return normalized_subtype
 
     @property
-    def normalized_context(self: 'MutRecord') -> str:
+    def normalized_context(self: 'MutRecord') -> Dna:
         """Return the normalized local context."""
         normalized_context: str = self[MutRecordKeys.normalized_context]
-        return normalized_context
+        return Dna(normalized_context)
 
-    def to_variant(self: 'MutRecord') -> Variant:
+    def to_variant(self: 'MutRecord') -> Union[Variant, Snv]:
         """Return this record as a :class:`Variant`."""
         variant = Variant(ref=self.ref, alt=self.alt, data=self)
-        if variant.is_snv():
+        if isinstance(variant, Snv):
             variant.context = self.normalized_context
         return variant
 
@@ -140,20 +140,20 @@ class MutReader(object):
         'normalized_context',
     ]
 
-    def __init__(self, handle: io.TextIOBase) -> None:
+    def __init__(self, handle: io.IOBase) -> None:
         self.handle = handle
         self.header = next(handle).strip().split()
         if not self.header[: len(self.attributes)] == self.attributes:
             raise ValueError('Required column names do not exist: {", ".join(self.attributes)}')
 
-    def __iter__(self):
+    def __iter__(self) -> 'MutReader':
         return self
 
-    def __next__(self):
+    def __next__(self) -> MutRecord:
         """Iterate through rows as dictionaries, then unpack into a :class:`MutRecord`."""
         fields = next(self.handle).strip().split()
         mapping = dict(zip(self.header, fields))
-        return MutRecord(**mapping)
+        return MutRecord(**mapping)  # type: ignore
 
     @staticmethod
     def read_from_path(path: Path) -> Dict[str, List[MutRecord]]:
@@ -161,7 +161,7 @@ class MutReader(object):
         with open(path, 'r') as handle:
             sample_map = {
                 name: list(group)
-                for name, group in groupby(MutReader(handle), attrgetter('sample'))
+                for name, group in groupby(MutReader(handle), attrgetter('sample'))  # type: ignore
             }
         return sample_map
 
