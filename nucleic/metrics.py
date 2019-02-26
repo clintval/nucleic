@@ -1,51 +1,120 @@
-import inspect
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List
+from pathlib import Path
+from typing import Dict, Iterable, List, TextIO, Tuple
+
+import attr
+
+__all__ = ['Metric', 'MetricReader', 'MetricWriter', 'FgbioMetricReader', 'FgbioMetricWriter']
 
 
+@attr.s(auto_attribs=True)
 class Metric(ABC):
-    """Abstract base class for any metric containing class."""
+    """Abstract base class for any metric containing class.
 
-    @abstractmethod
-    def __init__(self) -> None:
-        return None
+    Examples:
+        >>> import attr
+        >>> @attr.s(auto_attribs=True)
+        ... class CustomMetric(Metric):
+        ...     count: int
+        ...     rate: float
+        >>> metric = CustomMetric(count = 2, rate = 0.2)
 
-    @abstractmethod
-    def update(self, item: Any) -> None:
-        """Update this metric from an item."""
-        return None
+        >>> metric
+        CustomMetric(count=2, rate=0.2)
 
-    def update_from(self, iterable: Iterable[Any]) -> None:
-        """Update this metric from a collection of items."""
-        for item in iterable:
-            self.update(item)
-        return None
+        >>> metric.as_dict()
+        {'count': 2, 'rate': 0.2}
 
-    def fields(self) -> List[str]:
+        >>> metric.as_tuple()
+        (2, 0.2)
+
+        >>> CustomMetric.fields()
+        ['count', 'rate']
+
+    """
+
+    def as_dict(self) -> Dict:
+        """Transform this class to a dictionaary."""
+        return attr.asdict(self)
+
+    def as_tuple(self) -> Tuple:
+        """Write the values of this metric to a line."""
+        return attr.astuple(self)
+
+    @classmethod
+    def fields(cls) -> List[str]:
         """List the fields of this class."""
-        signature = inspect.signature(self.__init__)  # type: ignore
-        fields = sorted(signature.parameters.keys())
+        fields: List[str] = [attribute.name for attribute in attr.fields(cls)]
         return fields
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Transform this class to a dictionaary."""
-        mapping = dict(zip(self.fields(), self.to_line()))
-        return mapping
 
-    def to_line(self) -> List[Any]:
-        """Write the values of this metric to a line."""
-        line = [getattr(self, field) for field in self.fields()]
-        return line
+class MetricReader(ABC):
+    """Read metrics."""
 
-    def __repr__(self) -> str:
-        groups = [f'{field}={repr(key)}' for field, key in self.to_dict().items()]
-        return f'{self.__class__.__qualname__}({", ".join(groups)})'
+    def __init__(self, handle: TextIO, metric: Metric) -> None:
+        self.handle = handle
+        self.metric = metric
+        self.header = next(handle).strip().split()
 
-    def __str__(self) -> str:
-        return repr(self)
+    @classmethod
+    def read_path(cls, path: Path, metric: Metric) -> List[Metric]:
+        """Read a filepath and return all metrics."""
+        with open(path, 'r') as handle:
+            reader = cls(handle, metric)
+            return list(reader)
+
+    @abstractmethod
+    def __next__(self) -> Metric:
+        pass
+
+    def __iter__(self) -> 'MetricReader':
+        return self
 
 
-class MetricWriter(object):
-    """Not implemented yet."""
+class FgbioMetricReader(MetricReader):
+    """Fulcrum Genomics `fgbio` metric reader."""
 
-    pass
+    def __next__(self) -> Metric:
+        fields = next(self.handle).strip().split()
+        mapping = dict(zip(self.header, fields))
+        metric: Metric = self.metric(**mapping)  # type: ignore  # error: "Metric" not callable
+        return metric
+
+
+class MetricWriter(ABC):
+    """Write metrics."""
+
+    def __init__(self, handle: TextIO, metric: Metric) -> None:
+        self.handle = handle
+        self.metric = metric
+        self.header = metric.fields()
+        self._header_written: bool = False
+
+    @property
+    @abstractmethod
+    def delimiter(self) -> str:
+        """Text delimiter for output metric line."""
+        return ','
+
+    def write(self, record: Metric) -> None:
+        """Write this record to the handle."""
+        if self._header_written is False:
+            self.handle.write(self.delimiter.join(self.header) + '\n')
+            self._header_written = True
+        self.handle.write(self.delimiter.join(map(str, record.as_tuple())) + '\n')
+        return None
+
+    def write_all(self, records: Iterable[Metric]) -> None:
+        """Write all records to the handle."""
+        for record in records:
+            self.write(record)
+        return None
+
+
+class FgbioMetricWriter(MetricWriter):
+    """Fulcrum Genomics `fgbio` metrics writer."""
+
+    @property
+    def delimiter(self) -> str:
+        """Text delimiter for output metric line."""
+        return '\t'

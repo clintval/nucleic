@@ -8,6 +8,7 @@ from toyplot import Canvas
 from toyplot.locator import Explicit as ExplicitLocator
 
 from nucleic import SnvSpectrum
+from .seq_record import *
 
 __all__ = ['GridSpec', 'trinucleotide_spectrum']
 

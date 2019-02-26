@@ -2,8 +2,8 @@ import json
 import logging
 import re
 from heapq import nlargest
-from itertools import product
-from operator import itemgetter
+from itertools import groupby, product
+from operator import attrgetter, itemgetter
 from pathlib import Path
 from pprint import pformat
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
@@ -16,6 +16,7 @@ __all__ = [
     'DictPrettyReprMixin',
     'UnreachableException',
     'dataset',
+    'groupby_to_dict',
     'kmers',
 ]
 
@@ -171,6 +172,12 @@ def dataset(identifier: str, database: str = 'published') -> Dict:
     assert path.exists(), f'Database "{database}" does not exist!"'
     content: Dict = json.loads(path.read_text()).get(identifier, {})
     return content
+
+
+def groupby_to_dict(items: Iterable[Any], attr: str) -> Dict[str, List[Any]]:
+    """Group a collection of objects by any attribute."""
+    mapping = {name: list(group) for name, group in groupby(items, attrgetter(attr))}
+    return mapping
 
 
 def kmers(k: int, alphabet: Union[Iterable[str], str]) -> Generator[str, None, None]:

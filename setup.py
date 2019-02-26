@@ -30,6 +30,7 @@ setuptools.setup(
     license='MIT',
     packages=setuptools.find_packages(where='./'),
     install_requires=[
+        'attrs',
         'fastcluster',
         'nimfa',
         'matplotlib',

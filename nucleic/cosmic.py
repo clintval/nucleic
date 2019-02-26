@@ -4,6 +4,8 @@ import urllib.request as request
 from collections import defaultdict
 from typing import Dict
 
+from nucleic import Notation, Snv, SnvSpectrum
+
 __all__ = ['fetch_cosmic_signatures']
 
 #: Remote host for the COSMIC cancer signatures flatfile.
@@ -12,7 +14,7 @@ COSMIC_SIGNATURE_URL = (
 )
 
 
-def fetch_cosmic_signatures() -> Dict:
+def fetch_cosmic_signatures() -> Dict[str, SnvSpectrum]:
     """Fetch the COSMIC published signatures from the following URL.
 
         - https://cancer.sanger.ac.uk/cosmic
@@ -21,8 +23,6 @@ def fetch_cosmic_signatures() -> Dict:
         signatures: The probability masses of the COSMIC signatures.
 
     """
-    from nucleic import Snv, SnvSpectrum, Notation
-
     all_signatures: defaultdict = defaultdict(
         lambda: SnvSpectrum(k=3, notation=Notation.pyrimidine)
     )

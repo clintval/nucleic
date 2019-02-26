@@ -1,9 +1,6 @@
-import io
 from collections import OrderedDict
-from itertools import groupby
-from operator import attrgetter
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, TextIO, Type, Union
 
 from nucleic import Dna, Snv, Variant
 from nucleic.metrics import Metric
@@ -36,6 +33,7 @@ class MutRecord(OrderedDict):
         See description of this record at the following URL:
 
             - https://software.broadinstitute.org/software/igv/MUT
+
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -139,11 +137,11 @@ class MutReader(object):
         'normalized_context',
     ]
 
-    def __init__(self, handle: io.IOBase) -> None:
+    def __init__(self, handle: TextIO) -> None:
         self.handle = handle
         self.header = next(handle).strip().split()
         if not self.header[: len(self.attributes)] == self.attributes:
-            raise ValueError('Required column names do not exist: {", ".join(self.attributes)}')
+            raise ValueError(f'Required column names do not exist: {", ".join(self.attributes)}')
 
     def __iter__(self) -> 'MutReader':
         return self
@@ -154,15 +152,11 @@ class MutReader(object):
         mapping = dict(zip(self.header, fields))
         return MutRecord(**mapping)  # type: ignore
 
-    @staticmethod
-    def read_from_path(path: Path) -> Dict[str, List[MutRecord]]:
+    @classmethod
+    def read_path(cls: Type['MutReader'], path: Path) -> Dict[str, List[MutRecord]]:
         """Create a map of samples to :class:`MutRecord` from a file path."""
         with open(path, 'r') as handle:
-            sample_map = {
-                name: list(group)
-                for name, group in groupby(MutReader(handle), attrgetter('sample'))  # type: ignore
-            }
-        return sample_map
+            return list(cls(handle))  # type: ignore  # error: "MutReader" not callable
 
     def __repr__(self) -> str:
         return f'{self.__class__.__qualname__}({self.handle})'
