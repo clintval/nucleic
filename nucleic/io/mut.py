@@ -1,6 +1,9 @@
+import csv
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Dict, List, TextIO, Type, Union
+from typing import Any, Dict, Iterable, List, TextIO, Type, Union
+
+import attr
 
 from nucleic import Dna, Snv, Variant
 from nucleic.metrics import Metric
@@ -37,6 +40,8 @@ class MutRecord(OrderedDict):
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        if 'GENOMICREGION' not in kwargs:
+            print(kwargs)
         super().__init__(*args, **kwargs)
 
     @property
@@ -111,6 +116,12 @@ class MutRecord(OrderedDict):
         normalized_context: str = self[MutRecordKeys.normalized_context]
         return Dna(normalized_context)
 
+    @property
+    def vaf(self) -> float:
+        """Return the variant allele frequency of this record."""
+        vaf: float = self.alt_depth / (self.depth - self.dp_ad_difference)
+        return vaf if vaf > 0 else 0.0  # Some variant callers (VarDictJava) have greater alternate counts than reference counts.
+
     def to_variant(self: 'MutRecord') -> Union[Variant, Snv]:
         """Return this record as a :class:`Variant`."""
         variant = Variant(ref=self.ref, alt=self.alt, data=self)
@@ -119,7 +130,7 @@ class MutRecord(OrderedDict):
         return variant
 
 
-class MutReader(object):
+class MutReader(csv.DictReader):
     """Read a MUT file."""
 
     attributes = [
@@ -136,38 +147,30 @@ class MutReader(object):
         'normalized_subtype',
         'normalized_context',
     ]
-
+    delimiter: str = '\t'
+    
     def __init__(self, handle: TextIO) -> None:
-        self.handle = handle
-        self.header = next(handle).strip().split()
-        if not self.header[: len(self.attributes)] == self.attributes:
-            raise ValueError(f'Required column names do not exist: {", ".join(self.attributes)}')
+        super().__init__(handle, delimiter=self.delimiter)
 
-    def __iter__(self) -> 'MutReader':
-        return self
-
-    def __next__(self) -> MutRecord:
+    def __next__(self):
         """Iterate through rows as dictionaries, then unpack into a :class:`MutRecord`."""
-        fields = next(self.handle).strip().split()
-        mapping = dict(zip(self.header, fields))
-        return MutRecord(**mapping)  # type: ignore
-
+        item = super().__next__()
+        record = MutRecord(**item)
+        return record
+    
     @classmethod
     def read_path(cls: Type['MutReader'], path: Path) -> Dict[str, List[MutRecord]]:
         """Create a map of samples to :class:`MutRecord` from a file path."""
         with open(path, 'r') as handle:
             return list(cls(handle))  # type: ignore  # error: "MutReader" not callable
 
-    def __repr__(self) -> str:
-        return f'{self.__class__.__qualname__}({self.handle})'
 
-
+@attr.s(auto_attribs=True)
 class MutSnvMetric(Metric):
     """A metric class holding information about single nucleotide variants."""
 
-    def __init__(self, num_records: int = 0, total_alt_depth: int = 0) -> None:
-        self.num_records = num_records
-        self.total_alt_depth = total_alt_depth
+    num_records: int = 0
+    total_alt_depth: int = 0
 
     def update(self, record: MutRecord) -> None:
         """Update this metric with a new :class:`MutRecord`."""
@@ -176,3 +179,11 @@ class MutSnvMetric(Metric):
         self.num_records += 1
         self.total_alt_depth += record.alt_depth
         return None
+
+    @classmethod
+    def from_records(cls, records: Iterable[MutRecord]) -> 'MutSnvMetric':
+        """Instantiate the object from a collection of :class:`MutRecrod`."""
+        clazz = cls()
+        for record in records:
+            clazz.update(record)
+        return clazz
