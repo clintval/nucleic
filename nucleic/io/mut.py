@@ -40,8 +40,6 @@ class MutRecord(OrderedDict):
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        if 'GENOMICREGION' not in kwargs:
-            print(kwargs)
         super().__init__(*args, **kwargs)
 
     @property
@@ -178,6 +176,12 @@ class MutSnvMetric(Metric):
             return None
         self.num_records += 1
         self.total_alt_depth += record.alt_depth
+        return None
+
+    def update_all(self, records: List[MutRecord]) -> None:
+        """Update this metric with many :class:`MutRecord`."""
+        for record in records:
+            self.update(record)
         return None
 
     @classmethod

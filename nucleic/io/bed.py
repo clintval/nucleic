@@ -32,12 +32,6 @@ class Interval(object):
         contig, start, end, name, *_ = iterable
         return cls(str(contig), int(start), int(end), str(name))
 
-    def reference_seq(self, reference: Union[Fasta, Path]) -> Dna:
-        """Get thee reference sequence of this interval from a FASTA."""
-        assert self.is_closed(), f"Interval must have start and end coordinates: {self}"
-        assert self.is_placed(), f"Interval have `contig` defined: {self}"
-        return subseq(reference, self.contig, self.start, self.end)
-    
     def is_closed(self):
         """Test if this is a closed interval."""
         return all([num is not None for num in (self.start, self.end)])
@@ -45,6 +39,12 @@ class Interval(object):
     def is_placed(self):
         """Test if this interval is located on a contig."""
         return self.contig is not None
+
+    def reference_seq(self, reference: Union[Fasta, Path]) -> Dna:
+        """Get thee reference sequence of this interval from a FASTA."""
+        assert self.is_closed(), f"Interval must have start and end coordinates: {self}"
+        assert self.is_placed(), f"Interval have `contig` defined: {self}"
+        return subseq(reference, self.contig, self.start, self.end)
 
 
 class IntervalList(list):
