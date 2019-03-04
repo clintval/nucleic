@@ -1,7 +1,6 @@
 import csv
-
 from pathlib import Path
-from typing import Iterable, List, Optional, TextIO, Union
+from typing import Any, Iterable, List, Optional, TextIO, Union
 
 import attr
 
@@ -27,38 +26,40 @@ class Interval(object):
         return fields
 
     @classmethod
-    def from_iterable(cls, iterable: Iterable) -> 'Inteval':
+    def from_iterable(cls, iterable: Iterable) -> 'Interval':
         """Build this interval from a list."""
         contig, start, end, name, *_ = iterable
         return cls(str(contig), int(start), int(end), str(name))
 
-    def is_closed(self):
+    def is_closed(self) -> bool:
         """Test if this is a closed interval."""
         return all([num is not None for num in (self.start, self.end)])
 
-    def is_placed(self):
+    def is_placed(self) -> bool:
         """Test if this interval is located on a contig."""
         return self.contig is not None
 
     def reference_seq(self, reference: Union[Fasta, Path]) -> Dna:
         """Get thee reference sequence of this interval from a FASTA."""
-        assert self.is_closed(), f"Interval must have start and end coordinates: {self}"
-        assert self.is_placed(), f"Interval have `contig` defined: {self}"
+        if not self.is_closed():
+            raise ValueError(f"Interval must have start and end coordinates: {self}")
+        if not self.is_placed():
+            raise ValueError(f"Interval have `contig` defined: {self}")
         return subseq(reference, self.contig, self.start, self.end)
 
 
 class IntervalList(list):
     """A container of intervals."""
 
-    def __init__(self, *args):
+    def __init__(self, *args: Any) -> None:
         super().__init__(args)
 
     @classmethod
-    def read_bed(cls, handle: TextIO):
+    def read_bed(cls, handle: TextIO) -> 'IntervalList':
         """Read a BED filehandle into an interval list."""
         reader = csv.reader(handle, delimiter='\t')
         return cls(*(Interval.from_iterable(line) for line in reader))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         items = ', '.join([str(item) for item in self])
         return f'{self.__class__.__qualname__}({items})'

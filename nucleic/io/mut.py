@@ -1,7 +1,7 @@
 import csv
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, TextIO, Type, Union
+from typing import Any, Dict, Iterable, Iterator, List, TextIO, Type, Union
 
 import attr
 
@@ -118,7 +118,9 @@ class MutRecord(OrderedDict):
     def vaf(self) -> float:
         """Return the variant allele frequency of this record."""
         vaf: float = self.alt_depth / (self.depth - self.dp_ad_difference)
-        return vaf if vaf > 0 else 0.0  # Some variant callers (VarDictJava) have greater alternate counts than reference counts.
+        return (
+            vaf if vaf > 0 else 0.0
+        )  # Some variant callers (VarDictJava) have greater alternate counts than reference counts.
 
     def to_variant(self: 'MutRecord') -> Union[Variant, Snv]:
         """Return this record as a :class:`Variant`."""
@@ -146,16 +148,16 @@ class MutReader(csv.DictReader):
         'normalized_context',
     ]
     delimiter: str = '\t'
-    
+
     def __init__(self, handle: TextIO) -> None:
         super().__init__(handle, delimiter=self.delimiter)
 
-    def __next__(self):
+    def __next__(self) -> 'Iterator':
         """Iterate through rows as dictionaries, then unpack into a :class:`MutRecord`."""
         item = super().__next__()
         record = MutRecord(**item)
         return record
-    
+
     @classmethod
     def read_path(cls: Type['MutReader'], path: Path) -> Dict[str, List[MutRecord]]:
         """Create a map of samples to :class:`MutRecord` from a file path."""

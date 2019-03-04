@@ -2,9 +2,12 @@ import json
 import urllib.request as request
 from typing import Dict, List, Mapping, Optional, Tuple
 
+import attr
+
 __all__ = ['PfamGraphicFeature', 'PfamGraphicResponse']
 
 
+@attr.s(auto_attribs=True, slots=True)
 class PfamGraphicFeature(object):
     """An object representing a Pfam graphic.
 
@@ -12,27 +15,16 @@ class PfamGraphicFeature(object):
         feature: A dictionary of graphic feature options.
 
     """
-
-    def __init__(self, feature: Mapping) -> None:
-        self.color: str = feature.get('colour', 'grey')
-        self.display: Optional[str] = feature.get('display', None)
-        self.end: Optional[int] = feature.get('end', None)
-        self.endstyle: Optional[str] = feature.get('endStyle', None)
-        self.link: Optional[str] = feature.get('href', None)
-        self.start: Optional[int] = feature.get('start', None)
-        self.startstyle: Optional[str] = feature.get('startStyle', None)
-        self.text: Optional[str] = feature.get('text', '')
-        self.type: Optional[str] = feature.get('type', None)
-        self.metadata: Dict = feature.get('metadata', dict())
-
-    def __repr__(self) -> str:
-        return (
-            f'PfamGraphicFeature('
-            f'start={self.start} '
-            f'end={self.end} '
-            f'color="{self.color}" '
-            f'link="{self.link}")'
-        )
+    color: str = 'grey'
+    display: Optional[str] = None
+    end: Optional[int] = None
+    endstyle: Optional[str] = None
+    link: Optional[str] = None
+    start: Optional[int] = None
+    startstyle: Optional[str] = None
+    text: Optional[str] = ''
+    feature_type: Optional[str] = None
+    metadata: Dict = dict()
 
 
 class PfamGraphicResponse(object):
@@ -46,8 +38,8 @@ class PfamGraphicResponse(object):
         self.metadata: Dict = content.get('metadata', dict())
         self.motifs: Tuple[str] = content.get('motifs', tuple())
 
-        for region in content.get('regions', tuple()):
-            self.regions.append(PfamGraphicFeature(region))
+        for feature in content.get('regions', tuple()):
+            self.regions.append(PfamGraphicFeature(**feature))
 
     def __repr__(self) -> str:
         return (

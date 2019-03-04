@@ -23,6 +23,7 @@ def subseq(reference: Union[Fasta, Path], contig: str, start: int, end: int) -> 
         reference = Fasta(str(reference))
     return Dna(str(reference[str(contig)][int(start) : int(end)]))
 
+
 def centered_subseq(reference: Union[Fasta, Path], contig: str, position: int, k: int = 3) -> Dna:
     """Fetch a subsequence from a FASTA file centered on a position.
 
@@ -44,5 +45,5 @@ def centered_subseq(reference: Union[Fasta, Path], contig: str, position: int, k
 
     flank_length = int((k - 1) / 2)
     start, end = position - flank_length - 1, position + flank_length
-    subseq: Dna = fasta_subseq(reference, contig, start, end)
+    subseq: Dna = subseq(reference, contig, start, end)
     return subseq
