@@ -21,7 +21,7 @@ def subseq(reference: Union[Fasta, Path], contig: str, start: int, end: int) -> 
     """
     if isinstance(reference, (PurePath, str)):
         reference = Fasta(str(reference))
-    return Dna(str(reference[str(contig)][int(start) : int(end)]))
+    return Dna(str(reference[str(contig)][int(start) : int(end)]), lowercase = True)
 
 
 def centered_subseq(reference: Union[Fasta, Path], contig: str, position: int, k: int = 3) -> Dna:

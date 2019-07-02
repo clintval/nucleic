@@ -1,7 +1,7 @@
 import csv
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, TextIO, Type, Union
+from typing import Any, Dict, Iterable, List, TextIO, Type, Union
 
 import attr
 
@@ -152,7 +152,7 @@ class MutReader(csv.DictReader):
     def __init__(self, handle: TextIO) -> None:
         super().__init__(handle, delimiter=self.delimiter)
 
-    def __next__(self) -> 'Iterator':
+    def __next__(self) -> 'MutRecord':
         """Iterate through rows as dictionaries, then unpack into a :class:`MutRecord`."""
         item = super().__next__()
         record = MutRecord(**item)

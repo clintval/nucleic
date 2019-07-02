@@ -28,12 +28,17 @@ class Interval(object):
     @classmethod
     def from_iterable(cls, iterable: Iterable) -> 'Interval':
         """Build this interval from a list."""
-        contig, start, end, name, *_ = iterable
-        return cls(str(contig), int(start), int(end), str(name))
+        vector = list(iterable)
+        if len(vector) >= 4:
+            contig, start, end, name, *_ = iterable
+            return cls(str(contig), int(start), int(end), str(name))
+        elif len(vector) == 3:
+            contig, start, end = iterable
+            return cls(str(contig), int(start), int(end))
 
     def is_closed(self) -> bool:
         """Test if this is a closed interval."""
-        return all([num is not None for num in (self.start, self.end)])
+        return self.start is not None and self.end is not None
 
     def is_placed(self) -> bool:
         """Test if this interval is located on a contig."""
@@ -45,7 +50,10 @@ class Interval(object):
             raise ValueError(f"Interval must have start and end coordinates: {self}")
         if not self.is_placed():
             raise ValueError(f"Interval have `contig` defined: {self}")
-        return subseq(reference, self.contig, self.start, self.end)
+        self.contig
+        return subseq(
+            reference, self.contig, self.start, self.end
+        )  # type: ignore  # MyPy has no clue.
 
 
 class IntervalList(list):

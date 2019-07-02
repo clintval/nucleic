@@ -10,12 +10,16 @@ from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 
+import more_itertools
+
 __all__ = [
     'DictMostCommonMixin',
     'DictNpArrayMixin',
     'DictPrettyReprMixin',
     'UnreachableException',
     'dataset',
+    'filter_every',
+    'float_range',
     'groupby_to_dict',
     'kmers',
 ]
@@ -172,6 +176,43 @@ def dataset(identifier: str, database: str = 'published') -> Dict:
     assert path.exists(), f'Database "{database}" does not exist!"'
     content: Dict = json.loads(path.read_text()).get(identifier, {})
     return content
+
+
+def filter_idx(iterable: Iterable, seq: List[int]):
+    for segment in more_itertools.windowed(iterable, len(seq), step=len(seq)):
+        for i, item in zip(seq, segment):
+            if i == 1:
+                yield item
+
+
+def filter_every(iterable, n):
+    """Filter every `n`th item in an iterable."""
+    for i, item in enumerate(iterable):
+        if i % n == 0:
+            continue
+        yield item
+
+
+def float_range(x: float, y: Optional[float] = None, jump: float = 1):
+    """Range that supports floating point numbers.
+    
+    Note:
+        From the following source:
+        
+            - https://gist.github.com/axelpale/3e780ebdde4d99cbb69ffe8b1eada92c
+
+    """
+    if y is None:
+        x, y = 0, x
+    i = 0.0
+    x = float(x)
+    x0 = x
+    epsilon = jump / 2.0
+    yield x
+    while x + epsilon < y:
+        i += 1.0
+        x = x0 + i * jump
+        yield x
 
 
 def groupby_to_dict(items: Iterable[Any], attr: str) -> Dict[str, List[Any]]:

@@ -12,6 +12,7 @@ from skbio.sequence import GrammaredSequence
 from skbio.sequence._nucleotide_mixin import NucleotideMixin
 from skbio.util import classproperty
 
+#from nucleic.io.bed import Interval
 from nucleic.util import DictMostCommonMixin, DictNpArrayMixin, DictPrettyReprMixin, kmers
 
 from ._version import __version__
@@ -512,3 +513,4 @@ class SnvSpectrum(Spectrum):
 
     def __repr__(self) -> str:
         return f'{self.__class__.__qualname__}(k={self.k}, notation={self.notation})'
+

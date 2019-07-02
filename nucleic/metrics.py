@@ -1,6 +1,7 @@
+import csv
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, Iterable, List, TextIO, Tuple
+from typing import Any, Dict, Iterable, List, TextIO, Tuple, Type
 
 import attr
 
@@ -48,37 +49,24 @@ class Metric(ABC):
         return fields
 
 
-class MetricReader(ABC):
-    """Read metrics."""
+class MetricReader(csv.DictReader):
+    """Read a MUT file."""
 
-    def __init__(self, handle: TextIO, metric: Metric) -> None:
-        self.handle = handle
-        self.metric = metric
-        self.header = next(handle).strip().split()
+    def __init__(self, handle: TextIO, metric: Metric, delimiter = '\t') -> None:
+        super().__init__(handle, delimiter = delimiter)
+        self.metric: Metric = metric
+
+    def __next__(self) -> Any:
+        """Iterate through rows as dictionaries, then unpack into a :class:`Metric`."""
+        item = super().__next__()
+        record = self.metric(**item)
+        return record
 
     @classmethod
-    def read_path(cls, path: Path, metric: Metric) -> List[Metric]:
-        """Read a filepath and return all metrics."""
+    def read_path(cls: Type['MetricReader'], path: Path, metric: Metric) -> Dict[str, List[Metric]]:
+        """Create a map of samples to :class:`Metric` from a file path."""
         with open(path, 'r') as handle:
-            reader = cls(handle, metric)
-            return list(reader)
-
-    @abstractmethod
-    def __next__(self) -> Metric:
-        pass
-
-    def __iter__(self) -> 'MetricReader':
-        return self
-
-
-class FgbioMetricReader(MetricReader):
-    """Fulcrum Genomics `fgbio` metric reader."""
-
-    def __next__(self) -> Metric:
-        fields = next(self.handle).strip().split()
-        mapping = dict(zip(self.header, fields))
-        metric: Metric = self.metric(**mapping)  # type: ignore  # error: "Metric" not callable
-        return metric
+            return list(cls(handle, metric))  # type: ignore  # error: "MetricReader" not callable
 
 
 class MetricWriter(ABC):

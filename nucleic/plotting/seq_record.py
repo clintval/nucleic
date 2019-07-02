@@ -88,7 +88,7 @@ def plot_seq_record(seq_record: Any, ax: Optional[Any] = None) -> Any:
             if feature.type == 'Helix':
                 feature_type = r'$\alpha$ helix'
             elif feature.type == 'DNA binding':
-                feature_type = r'DNA-binding domain'
+                feature_type = 'DNA-binding\ndomain'
             else:
                 feature_type = feature.type
 
@@ -98,11 +98,12 @@ def plot_seq_record(seq_record: Any, ax: Optional[Any] = None) -> Any:
                 color='w',
                 ha='center',
                 va='center',
+                fontsize=9,
                 zorder=ZORDER_MAP.get(feature.type.lower(), 6) + 0.5,
             )
 
     ax.set_xticks(sorted(set(xticks + [77])))
-    ax.set_xticklabels([_ + 1 for _ in sorted(set(xticks + [77]))])
+    ax.set_xticklabels([_ + 1 for _ in sorted(set(xticks + [77]))], fontsize=8)
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(-0.75, 0.75)
 
