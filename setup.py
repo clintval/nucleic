@@ -37,7 +37,6 @@ setuptools.setup(
         'numpy',
         'ordered-set',
         'palettable',
-        'polo',
         'pyfaidx',
         # TODO: In skbio>0.5.0, NumPy is a build dependency
         'scikit-bio>=0.4.0,<=0.5.0',

@@ -45,7 +45,7 @@ class Interval(object):
         return self.contig is not None
 
     def reference_seq(self, reference: Union[Fasta, Path]) -> Dna:
-        """Get thee reference sequence of this interval from a FASTA."""
+        """Get the reference sequence of this interval from a FASTA."""
         if not self.is_closed():
             raise ValueError(f"Interval must have start and end coordinates: {self}")
         if not self.is_placed():

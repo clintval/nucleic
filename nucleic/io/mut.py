@@ -162,7 +162,7 @@ class MutReader(csv.DictReader):
     def read_path(cls: Type['MutReader'], path: Path) -> Dict[str, List[MutRecord]]:
         """Create a map of samples to :class:`MutRecord` from a file path."""
         with open(path, 'r') as handle:
-            return list(cls(handle))  # type: ignore  # error: "MutReader" not callable
+            return list(MutReader(handle))  # type: ignore  # error: "MutReader" not callable
 
 
 @attr.s(auto_attribs=True)
